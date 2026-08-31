@@ -42,7 +42,7 @@ if (-not (Test-Path $AdbExe)) {
 # 2. ADBサーバー起動
 # ==============================================
 
-& $AdbExe start-server *>$null
+$null = & $AdbExe start-server 2>&1
 
 # ==============================================
 # 3. Android端末取得
