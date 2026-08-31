@@ -85,13 +85,6 @@ foreach ($serial in $devices) {
 
     $designMah = $null
 
-    if ($model -like "XIG03*" -or $model -like "Redmi*") {
-        $designMah = 5000
-    }
-    elseif ($model -like "P780*") {
-        $designMah = 2630
-    }
-
     # ==========================================
     # バッテリー情報
     # ==========================================
