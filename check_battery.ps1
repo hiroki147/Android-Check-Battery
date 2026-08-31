@@ -1,4 +1,4 @@
-# UTF-8対応
+﻿# UTF-8対応
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
 
@@ -9,7 +9,7 @@ Write-Host "        🔋 Android Battery Health Checker"
 Write-Host "=============================================="
 
 # ==============================================
-# 1. ADBの自動セットアップ
+# ADBの自動セットアップ
 # ==============================================
 
 $WorkDir = Join-Path $env:TEMP "adb_temp"
@@ -24,9 +24,7 @@ if (-not (Test-Path $AdbExe)) {
 
     $AdbUrl = "https://dl.google.com/android/repository/platform-tools-latest-windows.zip"
 
-    Invoke-WebRequest `
-        -Uri $AdbUrl `
-        -OutFile $AdbZip
+    Invoke-WebRequest -Uri $AdbUrl -OutFile $AdbZip
 
     Write-Host "📂 展開中..." -ForegroundColor Cyan
 
@@ -39,13 +37,13 @@ if (-not (Test-Path $AdbExe)) {
 }
 
 # ==============================================
-# 2. ADBサーバー起動
+# ADBサーバー起動
 # ==============================================
 
 cmd.exe /c "`"$AdbExe`" start-server >nul 2>&1"
 
 # ==============================================
-# 3. Android端末取得
+# Android端末取得
 # ==============================================
 
 $devices = & $AdbExe devices 2>$null |
@@ -58,21 +56,22 @@ if (-not $devices) {
 
     Write-Host ""
     Write-Host "❌ Android端末が接続されていません。" -ForegroundColor Red
-    Write-Host "   USBデバッグがONになっているか確認してください。"
+    Write-Host "USBデバッグがONになっているか確認してください。"
     Write-Host ""
 
     Read-Host "Enterキーで終了"
+
     exit 1
 }
 
 # ==============================================
-# 4. 接続端末ごとに処理
+# 接続端末ごとに処理
 # ==============================================
 
 foreach ($serial in $devices) {
 
-    $model = (& $AdbExe -s $serial shell getprop ro.product.model).Trim()
-    $brand = (& $AdbExe -s $serial shell getprop ro.product.brand).Trim()
+    $model = (& $AdbExe -s $serial shell getprop ro.product.model 2>$null).Trim()
+    $brand = (& $AdbExe -s $serial shell getprop ro.product.brand 2>$null).Trim()
 
     Write-Host ""
     Write-Host "📱 $brand $model"
@@ -155,15 +154,19 @@ foreach ($serial in $devices) {
 
     $stats = & $AdbExe -s $serial shell dumpsys batterystats 2>$null
 
-    function Get-Capacity ($pattern) {
+    function Get-Capacity {
+        param (
+            [string]$Pattern
+        )
 
-        $matches = $stats | Select-String -Pattern $pattern
+        $result = $stats |
+            Select-String -Pattern $Pattern
 
-        if ($matches) {
+        if ($result) {
 
-            $lastLine = $matches[-1].Line
+            $line = $result[-1].Line
 
-            if ($lastLine -match ':\s*(\d+)') {
+            if ($line -match ':\s*(\d+)') {
 
                 return [int]$Matches[1]
             }
@@ -200,15 +203,17 @@ foreach ($serial in $devices) {
     # 使用する容量
     # ==========================================
 
-    $capacity = if ($last) {
-        $last
+    $capacity = $null
+
+    if ($last) {
+        $capacity = $last
     }
-    else {
-        $est
+    elseif ($est) {
+        $capacity = $est
     }
 
     # ==========================================
-    # 公称容量が分からない場合は入力
+    # 公称容量を入力
     # ==========================================
 
     if (-not $designMah) {
@@ -222,19 +227,25 @@ foreach ($serial in $devices) {
 
         Write-Host ""
 
-        do {
+        $inputMah = Read-Host "👉 公称容量を入力してください (mAh)"
 
-            $inputMah = Read-Host "👉 公称容量を入力してください (mAh)"
+        if ($inputMah -match '^\d+$') {
 
-            if ($inputMah -match '^\d+$' -and [int]$inputMah -gt 500) {
+            $designMah = [int]$inputMah
 
-                $designMah = [int]$inputMah
-                break
+            if ($designMah -le 500) {
+
+                Write-Host ""
+                Write-Host "❌ 500 mAhより大きい値を入力してください。" -ForegroundColor Red
+
+                $designMah = $null
             }
+        }
+        else {
 
-            Write-Host "❌ 500 mAhより大きい数字を入力してください。" -ForegroundColor Red
-
-        } while ($true)
+            Write-Host ""
+            Write-Host "❌ 数字を入力してください。" -ForegroundColor Red
+        }
     }
 
     # ==========================================
@@ -266,7 +277,7 @@ foreach ($serial in $devices) {
 
         Write-Host "=============================================="
         Write-Host "📊 現在の学習容量 : $capacity mAh"
-        Write-Host "⚠️ 健康度は計算できませんでした。"
+        Write-Host "⚠️ 公称容量がないため健康度を計算できません。"
         Write-Host "=============================================="
     }
     else {
