@@ -54,8 +54,6 @@ for SERIAL in "${DEVICES[@]}"; do
     # 3. 内蔵リストから判定
     if [ -z "$DESIGN_MAH" ]; then
         case "$MODEL" in
-            XIG03|Redmi*) DESIGN_MAH=5000 ;;
-            P780*)        DESIGN_MAH=2630 ;;
         esac
     fi
 
