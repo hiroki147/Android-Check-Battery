@@ -1,4 +1,4 @@
-﻿# UTF-8対応
+# UTF-8対応
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
 
@@ -89,52 +89,61 @@ foreach ($serial in $devices) {
     # バッテリー情報
     # ==========================================
 
-    $battery = & $AdbExe -s $serial shell dumpsys battery
+    $battery = & $AdbExe -s $serial shell dumpsys battery 2>$null
 
-    $level = (
+    $level = @(
         $battery |
-        Select-String "level:" |
+        Select-String "^\s*level:" |
         ForEach-Object {
-            ($_ -split ":\s*")[1]
+            ($_ -split ":\s*", 2)[1].Trim()
         }
-    ) -replace '\r',''
+    )[0]
 
-    $voltageRaw = (
+    $voltageRaw = @(
         $battery |
-        Select-String "voltage:" |
+        Select-String "^\s*voltage:" |
         ForEach-Object {
-            ($_ -split ":\s*")[1]
+            ($_ -split ":\s*", 2)[1].Trim()
         }
-    ) -replace '\r',''
+    )[0]
 
-    $tempRaw = (
+    $tempRaw = @(
         $battery |
-        Select-String "temperature:" |
+        Select-String "^\s*temperature:" |
         ForEach-Object {
-            ($_ -split ":\s*")[1]
+            ($_ -split ":\s*", 2)[1].Trim()
         }
-    ) -replace '\r',''
+    )[0]
 
-    $counterRaw = (
+    $counterRaw = @(
         $battery |
-        Select-String "Charge counter:" |
+        Select-String "^\s*Charge counter:" |
         ForEach-Object {
-            ($_ -split ":\s*")[1]
+            ($_ -split ":\s*", 2)[1].Trim()
         }
-    ) -replace '\r',''
+    )[0]
 
     Write-Host "🔋 残量     : $(if ($level) { $level } else { '?' })%"
 
-    if ($voltageRaw) {
-        Write-Host "⚡ 電圧     : $([math]::Round([double]$voltageRaw / 1000, 3)) V"
+    if ($voltageRaw -match '^\d+$') {
+
+        $voltage = [double]$voltageRaw / 1000
+
+        Write-Host "⚡ 電圧     : $([math]::Round($voltage, 3)) V"
     }
 
-    if ($tempRaw) {
-        Write-Host "🌡️ 温度     : $([math]::Round([double]$tempRaw / 10, 1)) °C"
+    if ($tempRaw -match '^\d+$') {
+
+        $temperature = [double]$tempRaw / 10
+
+        Write-Host "🌡️ 温度     : $([math]::Round($temperature, 1)) °C"
     }
 
     if ($counterRaw -match '^\d+$') {
-        Write-Host "📊 残量推定 : $([math]::Floor([double]$counterRaw / 1000)) mAh"
+
+        $counter = [math]::Floor([double]$counterRaw / 1000)
+
+        Write-Host "📊 残量推定 : $counter mAh"
     }
 
     # ==========================================
@@ -155,6 +164,7 @@ foreach ($serial in $devices) {
             $lastLine = $matches[-1].Line
 
             if ($lastLine -match ':\s*(\d+)') {
+
                 return [int]$Matches[1]
             }
         }
@@ -198,6 +208,36 @@ foreach ($serial in $devices) {
     }
 
     # ==========================================
+    # 公称容量が分からない場合は入力
+    # ==========================================
+
+    if (-not $designMah) {
+
+        Write-Host ""
+        Write-Host "⚠️ この機種の公称バッテリー容量が登録されていません。" -ForegroundColor Yellow
+
+        if ($capacity) {
+            Write-Host "   Androidが学習した現在の容量: $capacity mAh"
+        }
+
+        Write-Host ""
+
+        do {
+
+            $inputMah = Read-Host "👉 公称容量を入力してください (mAh)"
+
+            if ($inputMah -match '^\d+$' -and [int]$inputMah -gt 500) {
+
+                $designMah = [int]$inputMah
+                break
+            }
+
+            Write-Host "❌ 500 mAhより大きい数字を入力してください。" -ForegroundColor Red
+
+        } while ($true)
+    }
+
+    # ==========================================
     # 健康度計算
     # ==========================================
 
@@ -224,8 +264,10 @@ foreach ($serial in $devices) {
     }
     elseif ($capacity) {
 
-        Write-Host "⚠️ 学習容量は取得できましたが、公称容量が未登録です。"
-        Write-Host "   学習容量 : $capacity mAh"
+        Write-Host "=============================================="
+        Write-Host "📊 現在の学習容量 : $capacity mAh"
+        Write-Host "⚠️ 健康度は計算できませんでした。"
+        Write-Host "=============================================="
     }
     else {
 
