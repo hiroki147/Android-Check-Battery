@@ -13,8 +13,8 @@ Android端末のバッテリー健康度（劣化率）や学習容量をPCか�
 ### Windows の場合
 1. スマホの **設定 > 開発者向けオプション** から **USBデバッグ** をONにします。
 2. スマホをUSBケーブルでPCに接続します。
-3. [📥 check_battery.ps1 をダウンロード](https://github.com/hiroki147/Android-Check-Battery/raw/refs/heads/main/check_battery.ps1)
-4. `check_battery.ps1` を右クリックして「PowerShell で実行」を選択します。
+3. [📥 run_check_battery.bat をダウンロード](https://github.com/hiroki147/Android-Check-Battery/raw/refs/heads/main/run_check_battery.bat)
+4. `run_check_battery.bat` を右クリックして「PowerShell で実行」を選択します。
 
 ### Linux の場合
 1. スマホの **USBデバッグ** をONにしてPCに接続します。
