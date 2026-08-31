@@ -42,13 +42,13 @@ if (-not (Test-Path $AdbExe)) {
 # 2. ADBサーバー起動
 # ==============================================
 
-$null = & $AdbExe start-server 2>&1
+cmd.exe /c "`"$AdbExe`" start-server >nul 2>&1"
 
 # ==============================================
 # 3. Android端末取得
 # ==============================================
 
-$devices = & $AdbExe devices |
+$devices = & $AdbExe devices 2>$null |
     Select-String -Pattern "\tdevice$" |
     ForEach-Object {
         ($_ -split "\s+")[0]
